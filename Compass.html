@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Better Political Compass</title>
+  <!-- Bootstrap CSS for styling -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    /* Title styling: padded and centered with extra bottom margin */
+    .page-title {
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    /* Compass styles */
+    .compass-container {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      background: #fff;
+      border: 2px solid #333;
+      background-image: 
+          linear-gradient(90deg, #ccc 1px, transparent 1px),
+          linear-gradient(180deg, #ccc 1px, transparent 1px);
+      background-size: 50px 50px;
+      box-sizing: border-box;
+    }
+    .red-ring {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 20px solid rgba(255, 0, 0, 0.3);
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+    .compass-container::before,
+    .compass-container::after {
+      content: "";
+      position: absolute;
+      background: #333;
+    }
+    .compass-container::before {
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      transform: translateX(-50%);
+    }
+    .compass-container::after {
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      transform: translateY(-50%);
+    }
+    .compass-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .axis-label {
+      position: absolute;
+      font-weight: bold;
+      color: #333;
+    }
+    .axis-top {
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .axis-bottom {
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .axis-left {
+      left: -60px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .axis-right {
+      right: -60px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .red-dot {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: red;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      z-index: 10;
+    }
+    /* Quiz question container with rounded edges and padding */
+    .quiz-question {
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      background-color: #fff;
+    }
+    /* Horizontal answer options */
+    .answer-options {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+    }
+    .option-label {
+      flex: 1;
+      margin: 0 5px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+      user-select: none;
+    }
+    .option-label input {
+      display: none;
+    }
+    /* Hover and active states for answer options */
+    .option-label:hover:not(.selected) {
+      background-color: #e9ecef;
+    }
+    /* Override for neutral option */
+    .option-neutral:hover:not(.selected) {
+      background-color: #dcdcdc;
+    }
+    .option-label:active {
+      transform: scale(0.98);
+    }
+    /* Visual emphasis based on weight */
+    .option-extreme {
+      font-weight: bold;
+    }
+    .option-moderate {
+      font-weight: 600;
+    }
+    .option-slight {
+      font-weight: 400;
+    }
+    .option-neutral {
+      font-weight: 300;
+      background-color: #f0f0f0;
+    }
+    /* Color coding for positive vs. negative options */
+    .option-positive:not(.selected) {
+      border-color: #5cb85c;
+    }
+    .option-negative:not(.selected) {
+      border-color: #d9534f;
+    }
+    .option-label.selected.option-positive {
+      background-color: #5cb85c;
+      border-color: #5cb85c;
+      color: #fff;
+    }
+    .option-label.selected.option-negative {
+      background-color: #d9534f;
+      border-color: #d9534f;
+      color: #fff;
+    }
+    /* Selected state for neutral option */
+    .option-label.selected.option-neutral {
+      background-color: #dcdcdc;
+      border-color: #dcdcdc;
+      color: #000;
+    }
+    /* Modal styling remains unchanged */
+    #unsavedModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    #unsavedModal .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      max-width: 400px;
+      text-align: center;
+    }
+    /* Explicitly center the results heading */
+    #results-page h2 {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Landing Page -->
+  <div id="landing-page" class="container mt-5">
+    <!-- Gear icon to open the quiz editor -->
+    <div class="d-flex justify-content-end">
+      <i id="open-editor" class="fas fa-cog fa-2x" style="cursor:pointer;" title="Customize Quiz"></i>
+    </div>
+    <div class="row">
+      <!-- Explanation Text Column -->
+      <div class="col-md-6">
+        <h1 class="page-title">Better Political Compass</h1>
+        <p>
+          Welcome! This tool helps you discover your political stance by asking you a series of questions. 
+          Each question is categorized along one of two axes: the Right-Left axis or the Authoritarian-Libertarian axis.
+        </p>
+        <p>
+          For every question, you choose from options ranging from "Strongly agree" to "Strongly disagree" (with intermediate choices like "Somewhat agree" and "Somewhat disagree"). 
+          Each option carries a weight: e.g., Strongly agree is +5, Agree is +2, Somewhat agree is +1, Neutral/Other is 0, Somewhat disagree is -1, Disagree is -2, and Strongly disagree is -5.
+        </p>
+        <p>
+          Your responses are summed for each axis and then normalized against the maximum possible score. A red dot is then plotted on the compass to show where your views lie.
+          We value transparency—this process is completely open so you know exactly how your answers determine your political position.
+        </p>
+      </div>
+      <!-- Compass and Start Button Column -->
+      <div class="col-md-6 text-center">
+        <div class="compass-wrapper mx-auto">
+          <div class="compass-container" id="landing-compass">
+            <div class="red-ring"></div>
+          </div>
+          <div class="axis-label axis-top">Authoritarian</div>
+          <div class="axis-label axis-bottom">Libertarian</div>
+          <div class="axis-label axis-left">Left</div>
+          <div class="axis-label axis-right">Right</div>
+        </div>
+        <div class="mt-4">
+          <button id="start-quiz" class="btn btn-primary btn-lg">Start Test</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz Editor Page -->
+  <div id="editor-page" class="container" style="display:none;">
+    <h2 class="mt-4">Quiz Editor</h2>
+    <div id="question-list" class="mt-3">
+      <!-- Question cards will be rendered here -->
+    </div>
+    <div class="mb-4">
+      <button id="add-question" class="btn btn-success">Add Question</button>
+    </div>
+    <button id="save-quiz" class="btn btn-primary">Save Quiz & Download JSON</button>
+    <button id="editor-back" class="btn btn-secondary">Back</button>
+  </div>
+
+  <!-- Quiz Page -->
+  <div id="quiz-page" class="container" style="display:none;">
+    <h2 class="mt-4">Take the Quiz</h2>
+    <div id="quiz-question-container" class="mt-4">
+      <!-- Quiz question (with horizontal answer options) will be loaded here -->
+    </div>
+    <div class="mt-3">
+      <button id="prev-question" class="btn btn-secondary" style="display:none;">Back</button>
+      <button id="next-question" class="btn btn-primary">Next</button>
+      <button id="submit-quiz" class="btn btn-success" style="display:none;">Submit Quiz</button>
+    </div>
+  </div>
+
+  <!-- Results Page -->
+  <div id="results-page" class="container text-center" style="display:none;">
+    <h2 class="mt-4">Your Political Compass Result</h2>
+    <div class="compass-wrapper mx-auto mt-4">
+      <div class="compass-container" id="results-compass">
+        <div class="red-ring"></div>
+      </div>
+      <div class="axis-label axis-top">Authoritarian</div>
+      <div class="axis-label axis-bottom">Libertarian</div>
+      <div class="axis-label axis-left">Left</div>
+      <div class="axis-label axis-right">Right</div>
+    </div>
+    <!-- Centered Restart Button -->
+    <div class="mt-4">
+      <button id="restart" class="btn btn-primary">Restart</button>
+    </div>
+  </div>
+
+  <!-- Unsaved Changes Modal -->
+  <div id="unsavedModal">
+    <div class="modal-content">
+      <p>Are you sure you want to quit? Unsaved changes will not be saved.</p>
+      <button id="modal-save" class="btn btn-primary">Save</button>
+      <button id="modal-quit" class="btn btn-danger">Quit</button>
+    </div>
+  </div>
+
+  <!-- jQuery and Bootstrap JS (for modal simplicity) -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <script>
+    // Global variables
+    let currentQuestions = [];
+    let userAnswers = [];
+    let currentQuestionIndex = 0;
+    let unsavedChanges = false;
+
+    // Default Questions: first 10 for RL, next 10 for AL
+    const defaultQuestions = [
+      { text: "I think the government should try very hard to stay well within its budget, even if it means reducing social programs.", axis: "RL" },
+      { text: "I think wealthier individuals should be taxed more heavily than others to help reduce inequality.", axis: "RL" },
+      { text: "I think the government should have minimal regulation of businesses, allowing the free market to operate with few restrictions.", axis: "RL" },
+      { text: "I think public healthcare funding is a core responsibility of the government, even if taxes must be raised.", axis: "RL" },
+      { text: "I think welfare and unemployment benefits often discourage people from seeking work.", axis: "RL" },
+      { text: "I think cutting taxes for corporations is necessary to boost economic growth, even if it reduces government revenue.", axis: "RL" },
+      { text: "I think the government should intervene to protect domestic industries from global competition.", axis: "RL" },
+      { text: "I think environmental protection laws should be strict, even if they limit corporate profits.", axis: "RL" },
+      { text: "I think the government should redistribute wealth from the rich to the poor through programs and subsidies.", axis: "RL" },
+      { text: "I think privatization generally leads to better outcomes than government-run services.", axis: "RL" },
+      { text: "I think the government should have the power to strictly regulate what people can say on social media to prevent misinformation.", axis: "AL" },
+      { text: "I think individual rights and freedoms are more important than security measures, even if that means accepting greater risks.", axis: "AL" },
+      { text: "I think there should be harsh punishments, including long prison sentences, for even minor criminal offenses.", axis: "AL" },
+      { text: "I think people should be free to make personal choices regarding matters like drug use, even if society disapproves.", axis: "AL" },
+      { text: "I think law enforcement agencies need greater surveillance powers to maintain social order, even if privacy is compromised.", axis: "AL" },
+      { text: "I think personal freedom in lifestyle choices (e.g., marriage, dress, cultural expression) should be completely protected from government interference.", axis: "AL" },
+      { text: "I think a government’s primary responsibility should be to enforce traditional moral values among its citizens.", axis: "AL" },
+      { text: "I think individual autonomy is more important than the state’s authority in most situations.", axis: "AL" },
+      { text: "I think leaders who gain power should be questioned and challenged frequently by citizens, even if it undermines the government’s authority.", axis: "AL" },
+      { text: "I think society needs strong and centralized leadership to thrive, even at the expense of personal liberties.", axis: "AL" }
+    ];
+
+    // Answer options with weights
+    const answerOptions = [
+      { label: "Strongly agree", value: 5 },
+      { label: "Agree", value: 2 },
+      { label: "Somewhat agree", value: 1 },
+      { label: "Neutral/Other", value: 0 },
+      { label: "Somewhat disagree", value: -1 },
+      { label: "Disagree", value: -2 },
+      { label: "Strongly disagree", value: -5 }
+    ];
+
+    // Utility: show only one page at a time
+    function showPage(pageId) {
+      ["landing-page", "editor-page", "quiz-page", "results-page"].forEach(id => {
+        document.getElementById(id).style.display = (id === pageId ? "block" : "none");
+      });
+    }
+
+    function loadDefaultQuestions() {
+      currentQuestions = JSON.parse(JSON.stringify(defaultQuestions));
+    }
+
+    // Render quiz editor cards
+    function renderEditor() {
+      const container = document.getElementById("question-list");
+      container.innerHTML = "";
+      currentQuestions.forEach((q, index) => {
+        const card = document.createElement("div");
+        card.className = "card question-card mb-3";
+        card.innerHTML = `
+          <div class="card-body">
+            <div class="form-group">
+              <label>Question ${index + 1}</label>
+              <input type="text" class="form-control question-text" value="${q.text}">
+            </div>
+            <div class="form-group">
+              <label>Axis</label>
+              <select class="form-control question-axis">
+                <option value="RL" ${q.axis === "RL" ? "selected" : ""}>Right/Left</option>
+                <option value="AL" ${q.axis === "AL" ? "selected" : ""}>Authoritarian/Libertarian</option>
+              </select>
+            </div>
+            <button class="btn btn-danger btn-sm delete-question"><i class="fas fa-trash"></i> Delete</button>
+          </div>
+        `;
+        card.querySelector(".question-text").addEventListener("input", () => { unsavedChanges = true; });
+        card.querySelector(".question-axis").addEventListener("change", () => { unsavedChanges = true; });
+        card.querySelector(".delete-question").addEventListener("click", () => {
+          if (confirm("Delete this question?")) {
+            currentQuestions.splice(index, 1);
+            unsavedChanges = true;
+            renderEditor();
+          }
+        });
+        container.appendChild(card);
+      });
+    }
+
+    // Download quiz as JSON
+    function downloadQuiz() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentQuestions, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "political_compass_quiz.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+
+    // Render current quiz question with horizontal answer options
+    function renderQuizQuestion() {
+      const container = document.getElementById("quiz-question-container");
+      container.innerHTML = "";
+      const q = currentQuestions[currentQuestionIndex];
+      const quizDiv = document.createElement("div");
+      quizDiv.className = "quiz-question";
+      const header = document.createElement("h4");
+      header.textContent = `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}`;
+      quizDiv.appendChild(header);
+      const para = document.createElement("p");
+      para.textContent = q.text;
+      quizDiv.appendChild(para);
+      const optionsDiv = document.createElement("div");
+      optionsDiv.className = "answer-options";
+      answerOptions.forEach((option) => {
+        const label = document.createElement("label");
+        let emphasisClass = "";
+        if (option.value === 5 || option.value === -5) {
+          emphasisClass = "option-extreme";
+        } else if (option.value === 2 || option.value === -2) {
+          emphasisClass = "option-moderate";
+        } else if (option.value === 1 || option.value === -1) {
+          emphasisClass = "option-slight";
+        } else {
+          emphasisClass = "option-neutral";
+        }
+        let polarityClass = "";
+        if (option.value > 0) {
+          polarityClass = "option-positive";
+        } else if (option.value < 0) {
+          polarityClass = "option-negative";
+        }
+        label.className = `option-label ${emphasisClass} ${polarityClass}`;
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "quizOption";
+        input.value = option.value;
+        if (userAnswers[currentQuestionIndex] !== undefined && parseInt(userAnswers[currentQuestionIndex]) === option.value) {
+          input.checked = true;
+          label.classList.add("selected");
+        }
+        const span = document.createElement("span");
+        span.textContent = option.label;
+        label.appendChild(input);
+        label.appendChild(span);
+        label.addEventListener("click", () => {
+          const siblings = optionsDiv.querySelectorAll(".option-label");
+          siblings.forEach(sib => sib.classList.remove("selected"));
+          label.classList.add("selected");
+          input.checked = true;
+        });
+        optionsDiv.appendChild(label);
+      });
+      quizDiv.appendChild(optionsDiv);
+      container.appendChild(quizDiv);
+    }
+
+    function calculateResult() {
+      let totals = { RL: 0, AL: 0 };
+      let maxes = { RL: 0, AL: 0 };
+      currentQuestions.forEach((q, idx) => {
+        const score = userAnswers[idx] || 0;
+        totals[q.axis] += score;
+        maxes[q.axis] += 5;
+      });
+      return { totals, maxes };
+    }
+
+    function drawResult(compassId, totals, maxes) {
+      const container = document.getElementById(compassId);
+      const existingDot = container.querySelector(".red-dot");
+      if (existingDot) existingDot.remove();
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      let offsetX = (maxes.RL ? (totals.RL / maxes.RL) * (width / 2 - 20) : 0);
+      let offsetY = (maxes.AL ? -(totals.AL / maxes.AL) * (height / 2 - 20) : 0);
+      const dot = document.createElement("div");
+      dot.className = "red-dot";
+      dot.style.left = (centerX + offsetX - 8) + "px";
+      dot.style.top = (centerY + offsetY - 8) + "px";
+      container.appendChild(dot);
+    }
+
+    document.getElementById("open-editor").addEventListener("click", () => {
+      if (currentQuestions.length === 0) loadDefaultQuestions();
+      renderEditor();
+      showPage("editor-page");
+    });
+
+    document.getElementById("save-quiz").addEventListener("click", () => {
+      const cards = document.querySelectorAll(".question-card");
+      currentQuestions = [];
+      cards.forEach(card => {
+        const text = card.querySelector(".question-text").value;
+        const axis = card.querySelector(".question-axis").value;
+        currentQuestions.push({ text, axis });
+      });
+      unsavedChanges = false;
+      downloadQuiz();
+      alert("Quiz saved and downloaded!");
+    });
+
+    document.getElementById("editor-back").addEventListener("click", () => {
+      if (unsavedChanges) {
+        document.getElementById("unsavedModal").style.display = "flex";
+      } else {
+        showPage("landing-page");
+      }
+    });
+
+    document.getElementById("modal-save").addEventListener("click", () => {
+      document.getElementById("save-quiz").click();
+      document.getElementById("unsavedModal").style.display = "none";
+      showPage("landing-page");
+    });
+
+    document.getElementById("modal-quit").addEventListener("click", () => {
+      unsavedChanges = false;
+      document.getElementById("unsavedModal").style.display = "none";
+      showPage("landing-page");
+    });
+
+    document.getElementById("start-quiz").addEventListener("click", () => {
+      if (currentQuestions.length === 0) loadDefaultQuestions();
+      currentQuestionIndex = 0;
+      userAnswers = new Array(currentQuestions.length);
+      renderQuizQuestion();
+      document.getElementById("prev-question").style.display = "none";
+      document.getElementById("next-question").style.display = "inline-block";
+      document.getElementById("submit-quiz").style.display = "none";
+      showPage("quiz-page");
+    });
+
+    document.getElementById("next-question").addEventListener("click", () => {
+      const radios = document.getElementsByName("quizOption");
+      let selected = false;
+      radios.forEach(radio => {
+        if (radio.checked) {
+          userAnswers[currentQuestionIndex] = parseInt(radio.value);
+          selected = true;
+        }
+      });
+      if (!selected) {
+        alert("Please select an answer.");
+        return;
+      }
+      currentQuestionIndex++;
+      if (currentQuestionIndex >= currentQuestions.length - 1) {
+        document.getElementById("next-question").style.display = "none";
+        document.getElementById("submit-quiz").style.display = "inline-block";
+      }
+      document.getElementById("prev-question").style.display = "inline-block";
+      renderQuizQuestion();
+    });
+
+    document.getElementById("prev-question").addEventListener("click", () => {
+      currentQuestionIndex--;
+      if (currentQuestionIndex <= 0) {
+        document.getElementById("prev-question").style.display = "none";
+      }
+      document.getElementById("next-question").style.display = "inline-block";
+      document.getElementById("submit-quiz").style.display = "none";
+      renderQuizQuestion();
+    });
+
+    document.getElementById("submit-quiz").addEventListener("click", () => {
+      const radios = document.getElementsByName("quizOption");
+      let selected = false;
+      radios.forEach(radio => {
+        if (radio.checked) {
+          userAnswers[currentQuestionIndex] = parseInt(radio.value);
+          selected = true;
+        }
+      });
+      if (!selected) {
+        alert("Please select an answer.");
+        return;
+      }
+      const { totals, maxes } = calculateResult();
+      showPage("results-page");
+      setTimeout(() => drawResult("results-compass", totals, maxes), 50);
+    });
+
+    document.getElementById("restart").addEventListener("click", () => {
+      showPage("landing-page");
+    });
+
+    window.onload = () => {
+      showPage("landing-page");
+    };
+  </script>
+</body>
+</html>
